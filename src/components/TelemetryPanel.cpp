@@ -96,45 +96,67 @@ void TelemetryPanel::stop() {
 
 TelemetryPanel::~TelemetryPanel() = default;
 
+void TelemetryPanel::graphData() {
+    if (!initalized) {
+        return;
+    }
+    
+    // Draw checkboxes for each telemetry metric
+    for (const auto &pair: telemetryMap) {
+        ImGui::Checkbox(pair.first.c_str(), showMap[pair.first]); // Assuming showMap stores bool*
+        ImGui::SameLine();
+    }
+    ImGui::Checkbox("Auto Scale", &autoScale);
+    ImGui::SameLine();
+    ImGui::SliderFloat("History", &history, 1.0f, 60.0f, "%.1f s");
 
-//void TelemetryPanel::graphData() {
-//    if (!initalized) {
-//        return;
-//    }
-//    for (const auto &pair: telemetryMap) {
-//        ImGui::Checkbox(pair.first.c_str(), showMap[pair.first]);
-//        ImGui::SameLine();
-//    }
-//    ImGui::Checkbox("Auto Scale", &autoScale);
-//    ImGui::SameLine();
-//    ImGui::SliderFloat("History", &history, 1, 60, "%.1f s");
-//
-//
-//    static float t = 0;
-//
-//    if (!paused) {
-//        t += ImGui::GetIO().DeltaTime;
-//        for (const auto &pair: telemetryMap) {
-//            if (*showMap[pair.first]) {
-//                dataMap[pair.first]->AddPoint(t, std::stof(pair.second));
-//            }
-//        }
-//    }
-//    if (autoScale) {
-//        ImPlot::SetNextAxesToFit();
-//    }
-//
-//    if (ImPlot::BeginPlot("##Digital", ImVec2(-1, -1), ImPlotAxisFlags_AutoFit)) {
-//        ImPlot::SetupAxes(nullptr, nullptr);
-//        ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
-//        ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1);
-//        for (const auto &pair: telemetryMap) {
-//            if (*showMap[pair.first]) {
-//                ImPlot::PlotLine(pair.first.c_str(), &dataMap[pair.first]->Data[0].x, &dataMap[pair.first]->Data[0].y,
-//                                 dataMap[pair.first]->Data.size(), 0,
-//                                 dataMap[pair.first]->Offset, 2 * sizeof(float));
-//            }
-//        }
-//        ImPlot::EndPlot();
-//    }
-//}
+    static float t = 0;
+
+    // Update data structures if not paused
+    if (!paused) {
+        t += ImGui::GetIO().DeltaTime;
+        for (const auto &pair: telemetryMap) {
+            if (showMap.count(pair.first) && showMap[pair.first] != nullptr && *showMap[pair.first]) {
+                try {
+                    float value = std::stof(pair.second);
+                    if (dataMap.count(pair.first) && dataMap[pair.first] != nullptr) {
+                        dataMap[pair.first]->AddPoint(t, value);
+                    }
+                } catch (const std::exception& e) {
+                    // Catch invalid_argument or out_of_range from std::stof
+                    // Optionally log: std::cerr << "Invalid telemetry value: " << pair.second << "\n";
+                }
+            }
+        }
+    }
+
+    if (autoScale) {
+        ImPlot::SetNextAxesToFit();
+    }
+
+    // Modern ImPlot rendering block
+    if (ImPlot::BeginPlot("##Digital", ImVec2(-1, -1))) {
+        ImPlot::SetupAxes("Time (s)", "Value");
+        ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+        
+        // Only enforce Y limits if autoScale is false
+        if (!autoScale) {
+            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 1, ImGuiCond_Once);
+        }
+
+        for (const auto &pair: telemetryMap) {
+            if (showMap.count(pair.first) && showMap[pair.first] != nullptr && *showMap[pair.first]) {
+                if (dataMap.count(pair.first) && dataMap[pair.first] != nullptr && !dataMap[pair.first]->Data.empty()) {
+                    ImPlot::PlotLine(pair.first.c_str(), 
+                                     &dataMap[pair.first]->Data[0].x, 
+                                     &dataMap[pair.first]->Data[0].y,
+                                     dataMap[pair.first]->Data.size(), 
+                                     0,
+                                     dataMap[pair.first]->Offset, 
+                                     2 * sizeof(float));
+                }
+            }
+        }
+        ImPlot::EndPlot();
+    }
+}
