@@ -125,7 +125,7 @@ private:
                                                vec.push_back(0x00);
                                                //std::string s(vec.begin(), vec.end());
 
-                                               //std::cout << s << std::endl;
+                                               std::cout << s << std::endl;
                                                std::lock_guard<std::mutex> lock(rx_mutex_);
                                                if (rx_queue_.size() < RX_CAPACITY) {
                                                    rx_queue_.push_back(std::move(vec));

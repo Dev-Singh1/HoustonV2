@@ -76,9 +76,9 @@ void TelemetryPanel::render() {
     }
 
     ImGui::End();
-//    ImGui::Begin("Digital Plots");
-//    graphData();
-//    ImGui::End();
+    ImGui::Begin("Digital Plots");
+    graphData();
+    ImGui::End();
 
 }
 
